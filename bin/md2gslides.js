@@ -26,6 +26,7 @@ const UserAuthorizer = require('../lib/auth').default;
 const SlideGenerator = require('../lib/slide_generator').default;
 const opener = require('opener');
 const readline = require('readline');
+const { OAuth2Client } = require('google-auth-library');
 
 const SCOPES = [
   'https://www.googleapis.com/auth/presentations',
@@ -103,6 +104,25 @@ parser.addArgument(['--use-fileio'], {
 
 const args = parser.parseArgs();
 
+function getAuthenticatedClient() {
+  return new Promise((resolve, reject) => {
+    // create an oAuth client to authorize the API call.  Secrets are kept in a `keys.json` file,
+    // which should be downloaded from the Google Developers Console.
+    const oAuth2Client = new OAuth2Client(
+      "756546734307-i5sdc3l2b46cm0ijktt0gvifbq90qc8p.apps.googleusercontent.com",
+      "jN287NjXBBapGAYHw8ULUKpvktdQ",
+      "http://localhost"
+    );
+
+    // Generate the url that will be used for the consent dialog.
+    const authorizeUrl = oAuth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: SCOPES,
+    });
+    console.log('Authorize this app by visiting this url:', authorizeUrl);
+  });
+}
+
 function handleError(err) {
   console.log('Unable to generate slides:', err);
 }
@@ -132,7 +152,7 @@ function prompt(url) {
   });
 }
 
-function authorizeUser() {
+async function authorizeUser() {
   // Google OAuth2 clients always have a secret, even if the client is an installed
   // application/utility such as this.  Of course, in such cases the "secret" is
   // actually publicly known; security depends entirely on the secrecy of refresh
@@ -141,6 +161,10 @@ function authorizeUser() {
   // Load and parse client ID and secret from client_id.json file. (Create
   // OAuth client ID from Credentials tab at console.developers.google.com
   // and download the credentials as client_id.json to ~/.md2googleslides
+
+  // USE THIS TO GET THE FUCKING CODE!
+  // await getAuthenticatedClient()
+
   let data; // needs to be scoped outside of try-catch
   try {
     data = fs.readFileSync(STORED_CLIENT_ID_PATH);
@@ -197,7 +221,7 @@ function loadCss(theme) {
     'styles',
     theme + '.css'
   );
-  const css = fs.readFileSync(cssPath, {encoding: 'UTF-8'});
+  const css = fs.readFileSync(cssPath, { encoding: 'UTF-8' });
   return css;
 }
 
@@ -210,7 +234,7 @@ function generateSlides(slideGenerator) {
   } else {
     source = 0;
   }
-  const input = fs.readFileSync(source, {encoding: 'UTF-8'});
+  const input = fs.readFileSync(source, { encoding: 'UTF-8' });
   const css = loadCss(args.style);
 
   return slideGenerator.generateFromMarkdown(input, {
